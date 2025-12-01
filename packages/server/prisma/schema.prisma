@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BookCondition {
+  NEW
+  LIKE_NEW
+  USED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String?
+  password  String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // A user can have many transactions
+  transactions Transaction[]
+
+  @@map("users")
+}
+
+model Book {
+  id              String  @id @default(uuid())
+  title           String  @unique
+  writer          String
+  publisher       String
+  publicationYear Int
+  description     String?
+  coverImage      String? // Optional cover image URL
+  price           Float
+  stockQuantity   Int
+
+  condition       BookCondition @default(NEW)
+
+  // Relationship: Belongs to one genre
+  genre    Genre  @relation(fields: [genreId], references: [id])
+  genreId  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime? // Great for soft deletes
+  // A book can be in many transaction items
+  transactions BookOnTransaction[]
+
+  @@map("books")
+}
+
+model Genre {
+  id   String @id @default(uuid())
+  name String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime? // Great for soft deletes
+  // A genre can have many books
+  books Book[]
+
+  @@map("genres")
+}
+
+model Transaction {
+  id   String @id @default(uuid())
+  
+  // Relationship: Belongs to one user
+  user   User   @relation(fields: [userId], references: [id])
+  userId String 
+
+  totalPrice  Float   @default(0)
+  totalAmount Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationship: A transaction has many book items
+  books BookOnTransaction[]
+
+  @@map("orders")
+}
+
+model BookOnTransaction {
+  id       String @id @default(uuid())
+  quantity Int
+
+  // Relationship: Belongs to one transaction
+  transaction    Transaction  @relation(fields: [transactionId], references: [id])
+  transactionId  String 
+
+  // Relationship: Refers to one book
+  book    Book   @relation(fields: [bookId], references: [id])
+  bookId  String 
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("order_items")
+}

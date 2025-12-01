@@ -1,0 +1,19 @@
+{
+    "name": "pweb-reactjs-p23-2025",
+    "version": "1.0.0",
+    "private": true,
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "dev": "pnpm --parallel --filter \"@react-express-library/client\" --filter \"@react-express-library/server\" dev",
+        "dev:client": "pnpm --filter \"@react-express-library/client\" dev",
+        "dev:server": "pnpm --filter \"@react-express-library/server\" dev",
+        "prisma:migrate": "pnpm --filter \"@react-express-library/server\" prisma:migrate",
+        "prisma:generate": "pnpm --filter \"@react-express-library/server\" prisma:generate",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "packageManager": "pnpm@10.20.0"
+}

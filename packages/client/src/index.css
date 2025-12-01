@@ -1,0 +1,19 @@
+/* @tailwind base;
+@tailwind components;
+@tailwind utilities; */
+
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #F6F4EB;
+  --color-sky-blue: #91C8E4;
+  --color-medium-blue: #749BC2;
+  --color-dark-blue: #4682A9;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: rgb(31 41 55);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
