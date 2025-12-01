@@ -7,98 +7,105 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum BookCondition {
-  NEW
-  LIKE_NEW
-  USED
+enum userRole{
+  PLAYER
+  HOST
+  OPERATOR
 }
 
-model User {
-  id        String   @id @default(uuid())
-  username  String?
-  password  String
-  email     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // A user can have many transactions
-  transactions Transaction[]
-
-  @@map("users")
+enum gameStatus{
+  LOBBY
+  IN_PROGRESS
+  FINISHED
 }
 
-model Book {
-  id              String  @id @default(uuid())
-  title           String  @unique
-  writer          String
-  publisher       String
-  publicationYear Int
-  description     String?
-  coverImage      String? // Optional cover image URL
-  price           Float
-  stockQuantity   Int
-
-  condition       BookCondition @default(NEW)
-
-  // Relationship: Belongs to one genre
-  genre    Genre  @relation(fields: [genreId], references: [id])
-  genreId  String
-
-  createdAt DateTime @default(now())
+enum roundType{
+  JEOPARDY
+  DOUBLE
+  FINAL
+  CUSTOM
+}
+// Untuk username di sini dibuat not null, bisa ubah ke String? kalau mau tidak wajib isi
+model User{
+  id String @id @default(uuid())
+  email String @unique 
+  password string 
+  username String
+  role userRole @default(PLAYER)
+  gamesHost Game[] @relation ("HostGames)
+  teamMemberships TeamMember[]
+  responses TeamResponse[] @relation("Responder") validations TeamResponse[] @relation TeamResponse
+  createdAt DateTime @default (now())
   updatedAt DateTime @updatedAt
-  deletedAt DateTime? // Great for soft deletes
-  // A book can be in many transaction items
-  transactions BookOnTransaction[]
-
-  @@map("books")
 }
 
-model Genre {
-  id   String @id @default(uuid())
-  name String @unique
-
+model Game {
+  id String @id @default(uuid())
+  title String
+  status GameStatus @default(LOBBY)
+  teamLimit Int @default(4)
+  host User @relation("HostGames",fields: [hostId],references: [id])
+  hostId String
+  rounds Round[]
+  teams Team[]
+  clueStates ClueState[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  deletedAt DateTime? // Great for soft deletes
-  // A genre can have many books
-  books Book[]
-
-  @@map("genres")
 }
 
-model Transaction {
-  id   String @id @default(uuid())
-  
-  // Relationship: Belongs to one user
-  user   User   @relation(fields: [userId], references: [id])
-  userId String 
-
-  totalPrice  Float   @default(0)
-  totalAmount Int     @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relationship: A transaction has many book items
-  books BookOnTransaction[]
-
-  @@map("orders")
+model Team{
+  id String @id @default(uuid())
+  team Team @relation(fields:[teamId],references[id])
+  userId String
+  isCaptain Boolean @default(false)
+  joinedAt DateTime @default(now())
 }
 
-model BookOnTransaction {
-  id       String @id @default(uuid())
-  quantity Int
+model Round{
+  id String @id @default(uuid())
+  type RoundType @default(JEOPARDY)
+  order Int
+  game Game @relation(fields: [gameId],references[id])
+  gameId String
+  categories Category[]
+}
 
-  // Relationship: Belongs to one transaction
-  transaction    Transaction  @relation(fields: [transactionId], references: [id])
-  transactionId  String 
+model Category{
+  id String @id @default(uuid())
+  title String
+  order Int
+  round Round @relation(fields: [roundId],references[id])
+  roundId String
+  clues Clue[]
+}
 
-  // Relationship: Refers to one book
-  book    Book   @relation(fields: [bookId], references: [id])
-  bookId  String 
-
-  createdAt DateTime @default(now())
+model Clue{
+  id
+  string @id @default(uuid())
+  game Game @relation(fields:[gameId],references:[id])
+  gameId String
+  clue Clue @relation(fields:[clueId],references:[id])
+  clueId String state
+  ClueBoardState @default(AVAILABLE)
+  pickedByTeam Team? @relation (fields:[pickedByTeam],references[id])
+  pickedByTeamId String? 
+  resolvedBy User? @relation(fields:[resolvedById],references:[id])
+  resolvedById String?
   updatedAt DateTime @updatedAt
+}
 
-  @@map("order_items")
+model TeamResponse{
+  id String @id @default(uuid())
+  team Team @relation(fields: [teamId],references[id])
+  teamId String
+  clue Clue @relation(fields:[clueId],references:[id])
+  clueId String
+  submittedBy User @relation("Responder",fields:[submittedById],references:[id])
+  submittedById String
+  submittedAnswer String 
+  isCorrect Boolean?
+  awardedValue Int?
+  validatedBy User? @relation("Validator",fields:[validatedBy],references:[id])
+  validatedAt DateTime?
+  createdAt DateTime @default(now())
 }
