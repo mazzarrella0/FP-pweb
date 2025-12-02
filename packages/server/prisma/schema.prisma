@@ -53,12 +53,15 @@ model Game {
   updatedAt DateTime @updatedAt
 }
 
-model Team{
-  id String @id @default(uuid())
-  team Team @relation(fields:[teamId],references[id])
-  userId String
-  isCaptain Boolean @default(false)
-  joinedAt DateTime @default(now())
+model Team {
+  id     String   @id @default(uuid())
+  name   String
+  score  Int      @default(0)
+  order  Int
+  game   Game     @relation(fields: [gameId], references: [id])
+  gameId String
+  members TeamMember[]
+  responses TeamResponse[]
 }
 
 model Round{
