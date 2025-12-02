@@ -7,108 +7,144 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum userRole{
+enum UserRole {
   PLAYER
   HOST
   OPERATOR
 }
 
-enum gameStatus{
+enum GameStatus {
   LOBBY
   IN_PROGRESS
   FINISHED
 }
 
-enum roundType{
+enum RoundType {
   JEOPARDY
   DOUBLE
   FINAL
   CUSTOM
 }
-// Untuk username di sini dibuat not null, bisa ubah ke String? kalau mau tidak wajib isi
-model User{
-  id String @id @default(uuid())
-  email String @unique 
-  password string 
-  username String
-  role userRole @default(PLAYER)
-  gamesHost Game[] @relation ("HostGames)
-  teamMemberships TeamMember[]
-  responses TeamResponse[] @relation("Responder") validations TeamResponse[] @relation TeamResponse
-  createdAt DateTime @default (now())
-  updatedAt DateTime @updatedAt
+
+enum ClueBoardState {
+  AVAILABLE
+  PENDING
+  CORRECT
+  INCORRECT
+  LOCKED
+}
+
+model User {
+  id               String         @id @default(uuid())
+  email            String         @unique
+  password         String
+  username         String?
+  role             UserRole       @default(PLAYER)
+  gamesHost        Game[]         @relation("HostGames")
+  teamMemberships  TeamMember[]
+  responses        TeamResponse[] @relation("Responder")
+  validations      TeamResponse[] @relation("Validator")
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }
 
 model Game {
-  id String @id @default(uuid())
-  title String
-  status GameStatus @default(LOBBY)
-  teamLimit Int @default(4)
-  host User @relation("HostGames",fields: [hostId],references: [id])
-  hostId String
-  rounds Round[]
-  teams Team[]
+  id         String        @id @default(uuid())
+  title      String
+  status     GameStatus    @default(LOBBY)
+  teamLimit  Int           @default(4)
+  host       User          @relation("HostGames", fields: [hostId], references: [id])
+  hostId     String
+  rounds     Round[]
+  teams      Team[]
   clueStates ClueState[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 }
 
 model Team {
-  id     String   @id @default(uuid())
-  name   String
-  score  Int      @default(0)
-  order  Int
-  game   Game     @relation(fields: [gameId], references: [id])
-  gameId String
-  members TeamMember[]
+  id        String       @id @default(uuid())
+  name      String
+  score     Int          @default(0)
+  order     Int
+  game      Game         @relation(fields: [gameId], references: [id])
+  gameId    String
+  members   TeamMember[]
   responses TeamResponse[]
 }
 
-model Round{
-  id String @id @default(uuid())
-  type RoundType @default(JEOPARDY)
-  order Int
-  game Game @relation(fields: [gameId],references[id])
-  gameId String
+model TeamMember {
+  id        String   @id @default(uuid())
+  team      Team     @relation(fields: [teamId], references: [id])
+  teamId    String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  isCaptain Boolean  @default(false)
+  joinedAt  DateTime @default(now())
+
+  @@unique([teamId, userId])
+}
+
+model Round {
+  id         String     @id @default(uuid())
+  type       RoundType  @default(JEOPARDY)
+  order      Int
+  game       Game       @relation(fields: [gameId], references: [id])
+  gameId     String
   categories Category[]
 }
 
-model Category{
-  id String @id @default(uuid())
-  title String
-  order Int
-  round Round @relation(fields: [roundId],references[id])
-  roundId String
-  clues Clue[]
+model Category {
+  id       String  @id @default(uuid())
+  title    String
+  order    Int
+  round    Round   @relation(fields: [roundId], references: [id])
+  roundId  String
+  clues    Clue[]
 }
 
-model Clue{
-  id
-  string @id @default(uuid())
-  game Game @relation(fields:[gameId],references:[id])
-  gameId String
-  clue Clue @relation(fields:[clueId],references:[id])
-  clueId String state
-  ClueBoardState @default(AVAILABLE)
-  pickedByTeam Team? @relation (fields:[pickedByTeam],references[id])
-  pickedByTeamId String? 
-  resolvedBy User? @relation(fields:[resolvedById],references:[id])
-  resolvedById String?
-  updatedAt DateTime @updatedAt
+model Clue {
+  id            String           @id @default(uuid())
+  question      String
+  answer        String
+  value         Int
+  mediaUrl      String?
+  isDailyDouble Boolean          @default(false)
+  category      Category         @relation(fields: [categoryId], references: [id])
+  categoryId    String
+  states        ClueState[]
+  responses     TeamResponse[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 }
 
-model TeamResponse{
-  id String @id @default(uuid())
-  team Team @relation(fields: [teamId],references[id])
-  teamId String
-  clue Clue @relation(fields:[clueId],references:[id])
-  clueId String
-  submittedBy User @relation("Responder",fields:[submittedById],references:[id])
-  submittedById String
-  submittedAnswer String 
-  isCorrect Boolean?
-  awardedValue Int?
-  validatedBy User? @relation("Validator",fields:[validatedBy],references:[id])
-  validatedAt DateTime?
-  createdAt DateTime @default(now())
+model ClueState {
+  id             String         @id @default(uuid())
+  game           Game           @relation(fields: [gameId], references: [id])
+  gameId         String
+  clue           Clue           @relation(fields: [clueId], references: [id])
+  clueId         String
+  state          ClueBoardState @default(AVAILABLE)
+  pickedByTeam   Team?          @relation(fields: [pickedByTeamId], references: [id])
+  pickedByTeamId String?
+  resolvedBy     User?          @relation(fields: [resolvedById], references: [id])
+  resolvedById   String?
+  updatedAt      DateTime       @updatedAt
+}
+
+model TeamResponse {
+  id             String    @id @default(uuid())
+  team           Team      @relation(fields: [teamId], references: [id])
+  teamId         String
+  clue           Clue      @relation(fields: [clueId], references: [id])
+  clueId         String
+  submittedBy    User      @relation("Responder", fields: [submittedById], references: [id])
+  submittedById  String
+  submittedAnswer String
+  isCorrect      Boolean?
+  awardedValue   Int?
+  validatedBy    User?     @relation("Validator", fields: [validatedById], references: [id])
+  validatedById  String?
+  validatedAt    DateTime?
+  createdAt      DateTime  @default(now())
 }

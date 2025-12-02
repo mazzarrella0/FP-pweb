@@ -5,12 +5,12 @@ import jwt, {
     TokenExpiredError,
 } from "jsonwebtoken";
 import { prisma } from "../config/prisma";
-import { Prisma } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 import { PublicUser } from "@react-express-library/shared";
 
 // Membuat interface custom agar TypeScript tahu bahwa 'req' bisa memiliki properti 'user'
 export interface AuthRequest extends Request {
-    user?: PublicUser;
+    user?: PublicUser & { role: UserRole }; //Changed at 02-12-2025 
 }
 
 interface TokenPayload extends JwtPayload {
@@ -60,17 +60,20 @@ export const authMiddleware = async (
         const decoded = jwt.verify(token, jwtSecret);
 
         if (
-            typeof decoded !== "object" || // <-- Was '==='
+            typeof decoded !== "object" ||
+            !decoded ||
             !("id" in decoded) ||
             !("email" in decoded)
         ) {
             throw new Error("Invalid token payload");
         }
 
+        const payload = decoded as TokenPayload;
+
         // Cari pengguna di database berdasarkan ID dari token
-        const user: PublicUser | null = await prisma.user.findUnique({
-            where: { id: decoded.id },
-            select: { id: true, email: true, username: true }, // Hanya ambil data yang aman
+        const user = await prisma.user.findUnique({
+            where: { id: payload.id },
+            select: { id: true, email: true, username: true, role: true }, // Hanya ambil data yang aman
         });
 
         if (!user) {
@@ -81,7 +84,7 @@ export const authMiddleware = async (
         }
 
         // Lampirkan data pengguna ke object request
-        req.user = user;
+        req.user = user as PublicUser & { role: UserRole };
         next(); // Lanjutkan ke controller jika token valid
     } catch (error: unknown) {
         console.error("Authentication error:", error);
@@ -115,4 +118,24 @@ export const authMiddleware = async (
             message: errorMessage,
         });
     }
+};
+
+export const requireRoles = (...roles: UserRole[]) => {
+    return (req: AuthRequest, res: Response, next: NextFunction) => {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized: Missing user context",
+            });
+        }
+
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: "Forbidden: Insufficient permissions",
+            });
+        }
+
+        next();
+    };
 };
